@@ -229,11 +229,13 @@ class APIHandler(BaseHTTPRequestHandler):
 
 def main():
     """Start the HTTP server"""
-    port = 8000
+    import os
+    # Use PORT environment variable (Railway, Heroku, etc.) or default to 8000
+    port = int(os.environ.get('PORT', 8000))
     server_address = ('', port)
     httpd = HTTPServer(server_address, APIHandler)
     
-    logger.info(f"Starting API server on http://localhost:{port}")
+    logger.info(f"Starting API server on port {port}")
     logger.info("Press Ctrl+C to stop")
     
     try:
