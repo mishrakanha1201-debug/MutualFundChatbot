@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Mutual Fund FAQ Bot API",
     description="API for querying mutual fund information using RAG",
-    version="1.0.0"
+    version="1.0.0",
+    root_path="/api"  # Set root path to /api so it doesn't catch root requests
 )
 
 # Add CORS middleware
