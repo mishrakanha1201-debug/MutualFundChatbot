@@ -179,52 +179,548 @@ def generate_frontend_html(app_jsx_content: str, styles_css_content: str) -> str
     
     return ''.join(html_parts)
 
-# Load JSX and CSS files at module startup with error handling
-FRONTEND_APP_JSX = ""
-FRONTEND_STYLES_CSS = ""
+# Embedded frontend files (always available, no file system dependency)
+# These are embedded directly to work in Vercel serverless environment
+FRONTEND_APP_JSX = """const { useState, useEffect, useRef } = React;
 
-try:
-    FRONTEND_APP_JSX = load_frontend_file("app.jsx")
-    if FRONTEND_APP_JSX:
-        logger.info(f"Successfully loaded app.jsx ({len(FRONTEND_APP_JSX)} chars)")
-    else:
-        logger.warning("app.jsx not loaded at startup")
-except Exception as e:
-    logger.error(f"Error loading app.jsx at startup: {e}")
+// API Configuration
+// Use relative URL for same-domain deployment (Vercel), fallback to localhost for development
+const API_BASE_URL = window.location.origin || 'http://localhost:8000';
 
-try:
-    FRONTEND_STYLES_CSS = load_frontend_file("styles.css")
-    if FRONTEND_STYLES_CSS:
-        logger.info(f"Successfully loaded styles.css ({len(FRONTEND_STYLES_CSS)} chars)")
-    else:
-        logger.warning("styles.css not loaded at startup")
-except Exception as e:
-    logger.error(f"Error loading styles.css at startup: {e}")
+// Welcome State Component
+function WelcomeState({ onQuestionClick }) {
+    const exampleQuestions = [
+        "What is the exit load for HDFC Flexi Cap Fund?",
+        "What is HDFC ELSS fund lock-in period?",
+        "Expense ratio of HDFC Large and Mid Cap Fund?"
+    ];
 
-# Fallback JSX if file not loaded
-if not FRONTEND_APP_JSX:
-    FRONTEND_APP_JSX = """console.error('app.jsx failed to load');
-const { useState } = React;
-function ErrorDisplay() {
-    return React.createElement('div', {
-        style: { padding: '20px', color: '#44475B', textAlign: 'center' }
-    }, [
-        React.createElement('p', { key: '1' }, 'Error: Frontend files not loaded.'),
-        React.createElement('p', { key: '2', style: { fontSize: '12px', color: '#7C7E8C', marginTop: '10px' } }, 'Please check server logs.')
-    ]);
+    return (
+        <div className="welcome-state">
+            <p className="welcome-message">
+                Hi! I can help you find quick facts about mutual fund schemes from official sources.
+            </p>
+            <p className="welcome-disclaimer">
+                Post your questions in the chat below!
+            </p>
+            <div className="example-questions">
+                {exampleQuestions.map((question, index) => (
+                    <button
+                        key={index}
+                        className="example-question-chip"
+                        onClick={() => onQuestionClick(question)}
+                    >
+                        {question}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
 }
-const rootElement = document.getElementById('root');
-if (rootElement) {
-    if (ReactDOM.createRoot) {
-        ReactDOM.createRoot(rootElement).render(React.createElement(ErrorDisplay));
-    } else {
-        ReactDOM.render(React.createElement(ErrorDisplay), rootElement);
-    }
-}"""
 
-# Fallback CSS if file not loaded
-if not FRONTEND_STYLES_CSS:
-    FRONTEND_STYLES_CSS = "/* styles.css failed to load */"
+// Message Bubble Component
+function MessageBubble({ message, isUser, source, timestamp }) {
+    if (isUser) {
+        return (
+            <div className="message-bubble user-bubble">
+                {message}
+            </div>
+        );
+    }
+
+    // Parse assistant message to extract answer text (remove citation if present)
+    let answerText = message;
+    if (answerText.includes('Last updated from sources:')) {
+        answerText = answerText.split('Last updated from sources:')[0].trim();
+    }
+    if (answerText.includes('For more details, visit:')) {
+        answerText = answerText.split('For more details, visit:')[0].trim();
+    }
+
+    return (
+        <div className="message-bubble assistant-bubble">
+            <div className="answer-text">{answerText}</div>
+            {source && (
+                <a 
+                    href={source} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="source-link"
+                >
+                    View Source →
+                </a>
+            )}
+            {timestamp && (
+                <div className="timestamp">
+                    Last updated from sources: {timestamp}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Loading Bubble Component
+function LoadingBubble() {
+    return (
+        <div className="message-bubble loading-bubble">
+            <div className="loading-dots">
+                <div className="loading-dot"></div>
+                <div className="loading-dot"></div>
+                <div className="loading-dot"></div>
+            </div>
+        </div>
+    );
+}
+
+// Main Chat Component
+function ChatApp() {
+    const [messages, setMessages] = useState([]);
+    const [inputValue, setInputValue] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, isLoading]);
+
+    const handleQuestionClick = (question) => {
+        setInputValue(question);
+        handleSend(question);
+    };
+
+    const handleSend = async (questionText = null) => {
+        const question = questionText || inputValue.trim();
+        if (!question || isLoading) return;
+
+        // Add user message
+        setMessages(prev => [...prev, { text: question, isUser: true }]);
+        setInputValue('');
+        setIsLoading(true);
+
+        try {
+            // Call API
+            const response = await fetch(`${API_BASE_URL}/api/query`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question: question }),
+            });
+
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
+
+            const data = await response.json();
+            
+            // Add assistant response
+            setMessages(prev => [...prev, { 
+                text: data.answer, 
+                isUser: false,
+                source: data.citation_link || null,
+                timestamp: data.timestamp || null
+            }]);
+        } catch (error) {
+            console.error('Error:', error);
+            let errorMessage = 'Sorry, I encountered an error. Please try again later.';
+            
+            // More specific error messages
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                errorMessage = 'Unable to connect to the server. Please make sure the backend API is running on http://localhost:8000';
+            } else if (error.message.includes('404')) {
+                errorMessage = 'API endpoint not found. Please check the backend server configuration.';
+            } else if (error.message.includes('500')) {
+                errorMessage = 'Server error. Please try again later.';
+            }
+            
+            setMessages(prev => [...prev, { 
+                text: errorMessage, 
+                isUser: false 
+            }]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
+    const showWelcome = messages.length === 0 && !isLoading;
+
+    return (
+        <div className="chat-container">
+            <div className="chat-header">
+                <svg className="chat-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <h1 className="chat-header-title">Mutual Fund Broww</h1>
+            </div>
+            
+            <div className="chat-messages">
+                {showWelcome ? (
+                    <WelcomeState onQuestionClick={handleQuestionClick} />
+                ) : (
+                    <>
+                        {messages.map((msg, index) => (
+                            <MessageBubble 
+                                key={index} 
+                                message={msg.text} 
+                                isUser={msg.isUser}
+                                source={msg.source}
+                                timestamp={msg.timestamp}
+                            />
+                        ))}
+                        {isLoading && <LoadingBubble />}
+                        <div ref={messagesEndRef} />
+                    </>
+                )}
+            </div>
+
+            <div className="chat-input-area">
+                <div className="input-container">
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        className="chat-input"
+                        placeholder="Ask a question..."
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        disabled={isLoading}
+                    />
+                    <button
+                        className="send-button"
+                        onClick={() => handleSend()}
+                        disabled={!inputValue.trim() || isLoading}
+                    >
+                        <svg className="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Render App
+const rootElement = document.getElementById('root');
+if (ReactDOM.createRoot) {
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<ChatApp />);
+} else {
+    // Fallback for older React versions
+    ReactDOM.render(<ChatApp />, rootElement);
+}
+"""
+
+FRONTEND_STYLES_CSS = """/* Groww Brand Colors */
+:root {
+    --primary-green: #00B386;
+    --light-green: #EBF9F5;
+    --dark-text: #44475B;
+    --secondary-text: #7C7E8C;
+    --background: #FFFFFF;
+    --user-bubble: #F9F9F9;
+    --border: #EFEFEF;
+}
+
+/* Main Container */
+.chat-container {
+    width: 100%;
+    max-width: 500px;
+    height: 600px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+/* Header */
+.chat-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-header-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dark-text);
+    margin: 0;
+}
+
+.chat-header-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--dark-text);
+}
+
+/* Chat Messages Area */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: var(--background);
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+/* Welcome State */
+.welcome-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+    height: 100%;
+}
+
+.welcome-message {
+    font-size: 14px;
+    color: var(--dark-text);
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.welcome-disclaimer {
+    font-size: 12px;
+    color: var(--secondary-text);
+    margin-bottom: 24px;
+}
+
+.example-questions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 20px;
+}
+
+.example-question-chip {
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--background);
+    color: var(--primary-green);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.example-question-chip:hover {
+    background: var(--light-green);
+    border-color: var(--primary-green);
+}
+
+/* Chat Bubbles */
+.message-bubble {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.user-bubble {
+    background: var(--user-bubble);
+    color: var(--dark-text);
+    align-self: flex-end;
+    margin-left: auto;
+}
+
+.assistant-bubble {
+    background: var(--light-green);
+    color: var(--dark-text);
+    align-self: flex-start;
+}
+
+.answer-text {
+    margin-bottom: 8px;
+}
+
+.source-link {
+    color: var(--primary-green);
+    font-weight: 500;
+    text-decoration: none;
+    font-size: 14px;
+    display: inline-block;
+    margin-top: 8px;
+}
+
+.source-link:hover {
+    text-decoration: underline;
+}
+
+.timestamp {
+    font-size: 12px;
+    color: var(--secondary-text);
+    margin-top: 8px;
+}
+
+/* Loading State */
+.loading-bubble {
+    background: var(--light-green);
+    align-self: flex-start;
+    padding: 12px 16px;
+    border-radius: 12px;
+}
+
+.loading-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.loading-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--secondary-text);
+    border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out;
+}
+
+.loading-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.loading-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+/* Input Area */
+.chat-input-area {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--background);
+}
+
+.input-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--dark-text);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.chat-input:focus {
+    border-color: var(--primary-green);
+}
+
+.chat-input::placeholder {
+    color: var(--secondary-text);
+}
+
+.send-button {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: var(--primary-green);
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.send-button:hover:not(:disabled) {
+    background: #00A077;
+}
+
+.send-button:disabled {
+    background: var(--border);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.send-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    color: var(--secondary-text);
+    font-size: 14px;
+    padding: 20px;
+}
+"""
+
+# Try to load from files (for local development), but use embedded versions as fallback
+try:
+    loaded_jsx = load_frontend_file("app.jsx")
+    if loaded_jsx and len(loaded_jsx) > 100:  # Only use if substantial content
+        FRONTEND_APP_JSX = loaded_jsx
+        logger.info(f"Loaded app.jsx from file ({len(loaded_jsx)} chars)")
+    else:
+        logger.info(f"Using embedded app.jsx ({len(FRONTEND_APP_JSX)} chars)")
+except Exception as e:
+    logger.info(f"Using embedded app.jsx (file load failed: {e})")
+
+try:
+    loaded_css = load_frontend_file("styles.css")
+    if loaded_css and len(loaded_css) > 100:  # Only use if substantial content
+        FRONTEND_STYLES_CSS = loaded_css
+        logger.info(f"Loaded styles.css from file ({len(loaded_css)} chars)")
+    else:
+        logger.info(f"Using embedded styles.css ({len(FRONTEND_STYLES_CSS)} chars)")
+except Exception as e:
+    logger.info(f"Using embedded styles.css (file load failed: {e})")
 
 # Generate HTML with embedded frontend files (lazy generation to ensure files are loaded)
 def get_frontend_html():
