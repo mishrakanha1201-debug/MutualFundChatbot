@@ -141,24 +141,37 @@ FRONTEND_HTML = """<!DOCTYPE html>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script type="text/babel" id="app-jsx-inline">
-        {/* App will be loaded here */}
-    </script>
     <script>
-        // Load app.jsx and inject it into the Babel script tag
+        // Load app.jsx and execute it with Babel transformation
         fetch('/app.jsx')
             .then(response => {
-                if (!response.ok) throw new Error('Failed to load app.jsx');
+                if (!response.ok) throw new Error('Failed to load app.jsx: ' + response.status);
                 return response.text();
             })
             .then(code => {
-                const script = document.getElementById('app-jsx-inline');
-                script.textContent = code;
-                // Babel standalone will automatically transform and execute it
+                // Transform JSX to JavaScript using Babel
+                if (window.Babel) {
+                    try {
+                        const transformed = Babel.transform(code, { 
+                            presets: ['react'],
+                            plugins: ['transform-react-jsx']
+                        }).code;
+                        // Execute the transformed code
+                        eval(transformed);
+                    } catch (transformError) {
+                        console.error('Babel transformation error:', transformError);
+                        throw transformError;
+                    }
+                } else {
+                    throw new Error('Babel not loaded');
+                }
             })
             .catch(error => {
                 console.error('Error loading app.jsx:', error);
-                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #44475B; text-align: center;"><p>Error loading application.</p><p style="font-size: 12px; color: #7C7E8C;">Please check the browser console for details.</p></div>';
+                const root = document.getElementById('root');
+                if (root) {
+                    root.innerHTML = '<div style="padding: 20px; color: #44475B; text-align: center;"><p>Error loading application.</p><p style="font-size: 12px; color: #7C7E8C;">' + error.message + '</p><p style="font-size: 12px; color: #7C7E8C; margin-top: 10px;">Please check the browser console for details.</p></div>';
+                }
             });
     </script>
 </body>
