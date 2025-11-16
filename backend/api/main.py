@@ -141,23 +141,24 @@ FRONTEND_HTML = """<!DOCTYPE html>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script type="text/babel" id="app-jsx-script"></script>
+    <script type="text/babel" id="app-jsx-inline">
+        {/* App will be loaded here */}
+    </script>
     <script>
-        // Load app.jsx inline to avoid external file loading issues
+        // Load app.jsx and inject it into the Babel script tag
         fetch('/app.jsx')
-            .then(response => response.text())
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load app.jsx');
+                return response.text();
+            })
             .then(code => {
-                const script = document.getElementById('app-jsx-script');
+                const script = document.getElementById('app-jsx-inline');
                 script.textContent = code;
-                // Trigger Babel transformation
-                if (window.Babel) {
-                    const transformed = Babel.transform(code, { presets: ['react'] }).code;
-                    eval(transformed);
-                }
+                // Babel standalone will automatically transform and execute it
             })
             .catch(error => {
                 console.error('Error loading app.jsx:', error);
-                document.getElementById('root').innerHTML = '<p style="padding: 20px; color: #44475B;">Error loading application. Please refresh the page.</p>';
+                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #44475B; text-align: center;"><p>Error loading application.</p><p style="font-size: 12px; color: #7C7E8C;">Please check the browser console for details.</p></div>';
             });
     </script>
 </body>
