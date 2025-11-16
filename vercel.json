@@ -10,24 +10,10 @@
     {
       "src": "/api/(.*)",
       "dest": "api/index.py"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/app.jsx",
-      "destination": "/frontend/app.jsx"
     },
     {
-      "source": "/styles.css",
-      "destination": "/frontend/styles.css"
-    },
-    {
-      "source": "/",
-      "destination": "/frontend/index.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/frontend/index.html"
+      "src": "/(.*)",
+      "dest": "/$1"
     }
   ]
 }
