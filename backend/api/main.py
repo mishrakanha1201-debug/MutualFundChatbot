@@ -74,8 +74,14 @@ async def startup_event():
 
 # Load frontend files for Vercel serverless deployment
 # Try to load from public directory (works in local dev), fall back to reading at runtime
-project_root = Path(__file__).parent.parent.parent
-public_path = project_root / "public"
+try:
+    project_root = Path(__file__).parent.parent.parent
+    public_path = project_root / "public"
+    logger.info(f"Project root: {project_root}, Public path: {public_path}, Exists: {public_path.exists()}")
+except Exception as e:
+    logger.error(f"Error setting up paths: {e}")
+    project_root = Path.cwd()
+    public_path = project_root / "public"
 
 def load_frontend_file(filename: str) -> str:
     """Load frontend file from public directory - tries multiple paths for Vercel"""
@@ -167,21 +173,51 @@ def generate_frontend_html(app_jsx_content: str, styles_css_content: str) -> str
     
     return html_template.format(styles=styles_css_escaped, jsx=app_jsx_escaped)
 
-# Load JSX and CSS files at module startup
-FRONTEND_APP_JSX = load_frontend_file("app.jsx")
-FRONTEND_STYLES_CSS = load_frontend_file("styles.css")
+# Load JSX and CSS files at module startup with error handling
+FRONTEND_APP_JSX = ""
+FRONTEND_STYLES_CSS = ""
 
-# Log loading status
-if FRONTEND_APP_JSX:
-    logger.info(f"Successfully loaded app.jsx ({len(FRONTEND_APP_JSX)} chars)")
-else:
-    logger.error("Failed to load app.jsx - frontend will not work")
-    FRONTEND_APP_JSX = "console.error('app.jsx failed to load'); ReactDOM.render(React.createElement('div', {style: {padding: '20px', color: '#44475B'}}, 'Error: app.jsx failed to load. Check server logs.'), document.getElementById('root'));"
+try:
+    FRONTEND_APP_JSX = load_frontend_file("app.jsx")
+    if FRONTEND_APP_JSX:
+        logger.info(f"Successfully loaded app.jsx ({len(FRONTEND_APP_JSX)} chars)")
+    else:
+        logger.warning("app.jsx not loaded at startup")
+except Exception as e:
+    logger.error(f"Error loading app.jsx at startup: {e}")
 
-if FRONTEND_STYLES_CSS:
-    logger.info(f"Successfully loaded styles.css ({len(FRONTEND_STYLES_CSS)} chars)")
-else:
-    logger.error("Failed to load styles.css - frontend styling will not work")
+try:
+    FRONTEND_STYLES_CSS = load_frontend_file("styles.css")
+    if FRONTEND_STYLES_CSS:
+        logger.info(f"Successfully loaded styles.css ({len(FRONTEND_STYLES_CSS)} chars)")
+    else:
+        logger.warning("styles.css not loaded at startup")
+except Exception as e:
+    logger.error(f"Error loading styles.css at startup: {e}")
+
+# Fallback JSX if file not loaded
+if not FRONTEND_APP_JSX:
+    FRONTEND_APP_JSX = """console.error('app.jsx failed to load');
+const { useState } = React;
+function ErrorDisplay() {
+    return React.createElement('div', {
+        style: { padding: '20px', color: '#44475B', textAlign: 'center' }
+    }, [
+        React.createElement('p', { key: '1' }, 'Error: Frontend files not loaded.'),
+        React.createElement('p', { key: '2', style: { fontSize: '12px', color: '#7C7E8C', marginTop: '10px' } }, 'Please check server logs.')
+    ]);
+}
+const rootElement = document.getElementById('root');
+if (rootElement) {
+    if (ReactDOM.createRoot) {
+        ReactDOM.createRoot(rootElement).render(React.createElement(ErrorDisplay));
+    } else {
+        ReactDOM.render(React.createElement(ErrorDisplay), rootElement);
+    }
+}"""
+
+# Fallback CSS if file not loaded
+if not FRONTEND_STYLES_CSS:
     FRONTEND_STYLES_CSS = "/* styles.css failed to load */"
 
 # Generate HTML with embedded frontend files (lazy generation to ensure files are loaded)
@@ -189,17 +225,50 @@ def get_frontend_html():
     """Get frontend HTML, reloading files if needed"""
     global FRONTEND_APP_JSX, FRONTEND_STYLES_CSS
     
-    # If files weren't loaded, try again
-    if not FRONTEND_APP_JSX or not FRONTEND_STYLES_CSS:
-        logger.warning("Frontend files not loaded at startup, attempting to reload...")
-        if not FRONTEND_APP_JSX:
-            FRONTEND_APP_JSX = load_frontend_file("app.jsx")
-        if not FRONTEND_STYLES_CSS:
-            FRONTEND_STYLES_CSS = load_frontend_file("styles.css")
-    
-    return generate_frontend_html(FRONTEND_APP_JSX, FRONTEND_STYLES_CSS)
+    try:
+        # If files weren't loaded, try again
+        if not FRONTEND_APP_JSX or not FRONTEND_STYLES_CSS:
+            logger.warning("Frontend files not loaded at startup, attempting to reload...")
+            if not FRONTEND_APP_JSX:
+                try:
+                    FRONTEND_APP_JSX = load_frontend_file("app.jsx")
+                except Exception as e:
+                    logger.error(f"Error reloading app.jsx: {e}")
+            if not FRONTEND_STYLES_CSS:
+                try:
+                    FRONTEND_STYLES_CSS = load_frontend_file("styles.css")
+                except Exception as e:
+                    logger.error(f"Error reloading styles.css: {e}")
+        
+        return generate_frontend_html(FRONTEND_APP_JSX, FRONTEND_STYLES_CSS)
+    except Exception as e:
+        logger.error(f"Error generating frontend HTML: {e}")
+        # Return minimal HTML with error message
+        return """<!DOCTYPE html>
+<html>
+<head><title>Error</title></head>
+<body>
+    <div style="padding: 20px; color: #44475B;">
+        <p>Error loading frontend. Please check server logs.</p>
+        <p style="font-size: 12px; color: #7C7E8C;">Error: """ + str(e) + """</p>
+    </div>
+</body>
+</html>"""
 
-FRONTEND_HTML = get_frontend_html()
+# Generate initial HTML (will be regenerated on each request if needed)
+try:
+    FRONTEND_HTML = get_frontend_html()
+except Exception as e:
+    logger.error(f"Error generating initial frontend HTML: {e}")
+    FRONTEND_HTML = """<!DOCTYPE html>
+<html>
+<head><title>Error</title></head>
+<body>
+    <div style="padding: 20px; color: #44475B;">
+        <p>Error initializing frontend. Please check server logs.</p>
+    </div>
+</body>
+</html>"""
 
 from fastapi.responses import HTMLResponse, Response
 
@@ -229,12 +298,26 @@ async def serve_styles_css():
 @app.get("/")
 async def serve_frontend():
     """Serve frontend index.html at root"""
-    # Regenerate HTML in case files weren't loaded at startup
-    html = get_frontend_html()
-    return HTMLResponse(
-        content=html,
-        headers={"Cache-Control": "no-cache"}
-    )
+    try:
+        # Regenerate HTML in case files weren't loaded at startup
+        html = get_frontend_html()
+        return HTMLResponse(
+            content=html,
+            headers={"Cache-Control": "no-cache"}
+        )
+    except Exception as e:
+        logger.error(f"Error serving frontend: {e}")
+        error_html = f"""<!DOCTYPE html>
+<html>
+<head><title>Error</title></head>
+<body>
+    <div style="padding: 20px; color: #44475B;">
+        <p>Error loading frontend.</p>
+        <p style="font-size: 12px; color: #7C7E8C;">Error: {str(e)}</p>
+    </div>
+</body>
+</html>"""
+        return HTMLResponse(content=error_html, status_code=200)
 
 @app.get("/debug/frontend")
 async def debug_frontend():
