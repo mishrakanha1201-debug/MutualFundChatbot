@@ -76,8 +76,12 @@ async def startup_event():
 # For Vercel deployment, serve static files through FastAPI
 # IMPORTANT: Define static file routes BEFORE the root route
 # Try multiple possible paths for public directory (works in both local and Vercel)
+# Get project root (3 levels up from backend/api/main.py)
+project_root = Path(__file__).parent.parent.parent
+
 possible_paths = [
-    Path(__file__).parent.parent.parent / "public",  # From backend/api/main.py
+    project_root / "public",  # From project root
+    Path(__file__).parent.parent.parent / "public",  # From backend/api/main.py (same as above)
     Path.cwd() / "public",  # Current working directory
     Path("/var/task/public"),  # Vercel serverless environment
     Path("/tmp/public"),  # Alternative Vercel path
@@ -85,10 +89,14 @@ possible_paths = [
 
 public_path = None
 for path in possible_paths:
+    abs_path = path.resolve() if path.exists() else path
     if path.exists() and (path / "index.html").exists():
         public_path = path
-        logger.info(f"Found public directory at: {public_path}")
+        logger.info(f"Found public directory at: {public_path} (absolute: {abs_path})")
         break
+
+if not public_path:
+    logger.warning(f"Public directory not found. Checked paths: {[str(p) for p in possible_paths]}")
 
 if public_path:
     # Serve individual static files (define these first)
