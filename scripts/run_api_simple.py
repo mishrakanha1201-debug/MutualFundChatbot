@@ -230,7 +230,7 @@ class APIHandler(BaseHTTPRequestHandler):
 def main():
     """Start the HTTP server"""
     import os
-    # Use PORT environment variable (Railway, Heroku, etc.) or default to 8000
+    # Use PORT environment variable or default to 8000
     port = int(os.environ.get('PORT', 8000))
     server_address = ('', port)
     httpd = HTTPServer(server_address, APIHandler)

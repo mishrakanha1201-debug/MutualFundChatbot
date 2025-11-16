@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 import logging
+import os
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -12,7 +13,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 try:
     from fastapi import FastAPI, HTTPException, Query
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import JSONResponse, FileResponse
+    from fastapi.staticfiles import StaticFiles
 except ImportError:
     # Fallback if FastAPI not installed
     print("FastAPI not installed. Please install: pip install fastapi uvicorn")
@@ -69,6 +71,41 @@ def get_rag_pipeline():
 async def startup_event():
     """Initialize RAG pipeline on startup (for traditional deployments)"""
     get_rag_pipeline()
+
+# Mount static files for frontend (only if public directory exists)
+# For Vercel deployment, serve static files through FastAPI
+public_path = Path(__file__).parent.parent.parent / "public"
+if public_path.exists():
+    # Serve static files (JS, CSS, etc.)
+    app.mount("/static", StaticFiles(directory=str(public_path)), name="static")
+    
+    # Serve individual static files
+    @app.get("/app.jsx")
+    async def serve_app_jsx():
+        """Serve app.jsx"""
+        jsx_path = public_path / "app.jsx"
+        if jsx_path.exists():
+            return FileResponse(str(jsx_path), media_type="application/javascript")
+        raise HTTPException(status_code=404, detail="app.jsx not found")
+    
+    @app.get("/styles.css")
+    async def serve_styles_css():
+        """Serve styles.css"""
+        css_path = public_path / "styles.css"
+        if css_path.exists():
+            return FileResponse(str(css_path), media_type="text/css")
+        raise HTTPException(status_code=404, detail="styles.css not found")
+
+
+@app.get("/")
+async def serve_frontend():
+    """Serve frontend index.html at root"""
+    public_path = Path(__file__).parent.parent.parent / "public"
+    index_path = public_path / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path), media_type="text/html")
+    else:
+        return {"message": "Frontend not found. Please ensure public/index.html exists."}
 
 
 @app.get("/api/", response_model=dict)
