@@ -137,15 +137,20 @@ FRONTEND_HTML = """<!DOCTYPE html>
 </body>
 </html>"""
 
-# Load JSX and CSS files
+# Load JSX and CSS files at module startup
 FRONTEND_APP_JSX = load_frontend_file("app.jsx")
 FRONTEND_STYLES_CSS = load_frontend_file("styles.css")
 
-if not FRONTEND_APP_JSX:
+# Log loading status
+if FRONTEND_APP_JSX:
+    logger.info(f"Successfully loaded app.jsx ({len(FRONTEND_APP_JSX)} chars)")
+else:
     logger.error("Failed to load app.jsx - frontend will not work")
     FRONTEND_APP_JSX = "console.error('app.jsx failed to load');"
 
-if not FRONTEND_STYLES_CSS:
+if FRONTEND_STYLES_CSS:
+    logger.info(f"Successfully loaded styles.css ({len(FRONTEND_STYLES_CSS)} chars)")
+else:
     logger.error("Failed to load styles.css - frontend styling will not work")
     FRONTEND_STYLES_CSS = "/* styles.css failed to load */"
 
@@ -155,17 +160,32 @@ from fastapi.responses import HTMLResponse, Response
 @app.get("/app.jsx")
 async def serve_app_jsx():
     """Serve app.jsx"""
-    return Response(content=FRONTEND_APP_JSX, media_type="application/javascript")
+    if not FRONTEND_APP_JSX:
+        raise HTTPException(status_code=500, detail="app.jsx not loaded")
+    return Response(
+        content=FRONTEND_APP_JSX, 
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache"}
+    )
 
 @app.get("/styles.css")
 async def serve_styles_css():
     """Serve styles.css"""
-    return Response(content=FRONTEND_STYLES_CSS, media_type="text/css")
+    if not FRONTEND_STYLES_CSS:
+        raise HTTPException(status_code=500, detail="styles.css not loaded")
+    return Response(
+        content=FRONTEND_STYLES_CSS, 
+        media_type="text/css",
+        headers={"Cache-Control": "no-cache"}
+    )
 
 @app.get("/")
 async def serve_frontend():
     """Serve frontend index.html at root"""
-    return HTMLResponse(content=FRONTEND_HTML)
+    return HTMLResponse(
+        content=FRONTEND_HTML,
+        headers={"Cache-Control": "no-cache"}
+    )
 
 
 @app.get("/api/", response_model=dict)
