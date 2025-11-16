@@ -88,30 +88,39 @@ def load_frontend_file(filename: str) -> str:
     ]
     
     for file_path in possible_paths:
+        abs_path = file_path.resolve() if file_path.exists() else file_path
         if file_path.exists():
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    logger.info(f"Successfully loaded {filename} from {file_path}")
-                    return content
+                    if content:
+                        logger.info(f"Successfully loaded {filename} from {abs_path} ({len(content)} chars)")
+                        return content
+                    else:
+                        logger.warning(f"File {filename} at {abs_path} is empty")
             except Exception as e:
-                logger.warning(f"Error reading {filename} from {file_path}: {e}")
+                logger.warning(f"Error reading {filename} from {abs_path}: {e}")
                 continue
     
-    logger.error(f"Could not load {filename} from any path. Tried: {[str(p) for p in possible_paths]}")
+    logger.error(f"Could not load {filename} from any path. Tried: {[str(p.resolve() if p.exists() else p) for p in possible_paths]}")
     return ""
 
 # Generate HTML with embedded frontend files
 def generate_frontend_html(app_jsx_content: str, styles_css_content: str) -> str:
     """Generate HTML with embedded JSX and CSS"""
-    # Escape for JavaScript template literal
-    def escape_js(s):
-        return s.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${').replace('</script>', '<\\/script>')
+    # Escape for HTML/JavaScript - need to escape script tags and handle special chars
+    def escape_for_html(s):
+        # Escape script closing tags to prevent breaking out of script tag
+        s = s.replace('</script>', '<\\/script>')
+        # Escape backslashes
+        s = s.replace('\\', '\\\\')
+        return s
     
-    app_jsx_escaped = escape_js(app_jsx_content)
-    styles_css_escaped = escape_js(styles_css_content)
+    app_jsx_escaped = escape_for_html(app_jsx_content)
+    styles_css_escaped = escape_for_html(styles_css_content)
     
-    return f"""<!DOCTYPE html>
+    # Use string formatting with proper escaping
+    html_template = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -121,29 +130,29 @@ def generate_frontend_html(app_jsx_content: str, styles_css_content: str) -> str
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        * {{
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }}
+        }
         
-        body {{
+        body {
             font-family: 'Inter', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background-color: #FFFFFF;
             color: #44475B;
             line-height: 1.5;
-        }}
+        }
         
-        #root {{
+        #root {
             width: 100%;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
-        }}
+        }
     </style>
-    <style id="app-styles">{styles_css_escaped}</style>
+    <style id="app-styles">{styles}</style>
 </head>
 <body>
     <div id="root"></div>
@@ -151,10 +160,12 @@ def generate_frontend_html(app_jsx_content: str, styles_css_content: str) -> str
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="text/babel">
-        {app_jsx_escaped}
+{jsx}
     </script>
 </body>
 </html>"""
+    
+    return html_template.format(styles=styles_css_escaped, jsx=app_jsx_escaped)
 
 # Load JSX and CSS files at module startup
 FRONTEND_APP_JSX = load_frontend_file("app.jsx")
