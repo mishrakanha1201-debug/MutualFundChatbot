@@ -75,8 +75,22 @@ async def startup_event():
 # Mount static files for frontend (only if public directory exists)
 # For Vercel deployment, serve static files through FastAPI
 # IMPORTANT: Define static file routes BEFORE the root route
-public_path = Path(__file__).parent.parent.parent / "public"
-if public_path.exists():
+# Try multiple possible paths for public directory (works in both local and Vercel)
+possible_paths = [
+    Path(__file__).parent.parent.parent / "public",  # From backend/api/main.py
+    Path.cwd() / "public",  # Current working directory
+    Path("/var/task/public"),  # Vercel serverless environment
+    Path("/tmp/public"),  # Alternative Vercel path
+]
+
+public_path = None
+for path in possible_paths:
+    if path.exists() and (path / "index.html").exists():
+        public_path = path
+        logger.info(f"Found public directory at: {public_path}")
+        break
+
+if public_path:
     # Serve individual static files (define these first)
     @app.get("/app.jsx")
     async def serve_app_jsx():
@@ -102,7 +116,15 @@ if public_path.exists():
         if index_path.exists():
             return FileResponse(str(index_path), media_type="text/html")
         else:
+            logger.error(f"index.html not found at: {index_path}")
             return {"message": "Frontend not found. Please ensure public/index.html exists."}
+else:
+    logger.warning("Public directory not found. Frontend will not be served.")
+    
+    @app.get("/")
+    async def serve_frontend_fallback():
+        """Fallback if public directory not found"""
+        return {"message": "Frontend files not found. Please ensure public/ directory exists with index.html, app.jsx, and styles.css"}
 
 
 @app.get("/api/", response_model=dict)
