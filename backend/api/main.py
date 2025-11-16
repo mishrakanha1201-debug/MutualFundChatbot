@@ -97,7 +97,9 @@ async def query_funds(request: QueryRequest):
     Returns:
         QueryResponse with answer and sources
     """
-    if not rag_pipeline:
+    # Lazy initialize RAG pipeline (for serverless)
+    pipeline = get_rag_pipeline()
+    if not pipeline:
         raise HTTPException(
             status_code=503,
             detail="RAG pipeline not initialized. Please check server logs."
@@ -107,7 +109,7 @@ async def query_funds(request: QueryRequest):
         logger.info(f"Processing query: {request.question}")
         
         # Query RAG pipeline
-        result = rag_pipeline.query(
+        result = pipeline.query(
             question=request.question,
             fund_name=request.fund_name,
             top_k=request.top_k
@@ -150,14 +152,16 @@ async def list_schemes():
     Returns:
         FundsResponse with list of available funds
     """
-    if not rag_pipeline:
+    # Lazy initialize RAG pipeline (for serverless)
+    pipeline = get_rag_pipeline()
+    if not pipeline:
         raise HTTPException(
             status_code=503,
             detail="RAG pipeline not initialized"
         )
     
     try:
-        funds = rag_pipeline.list_available_funds()
+        funds = pipeline.list_available_funds()
         
         fund_info = [
             {"name": fund, "available": True}
@@ -185,9 +189,11 @@ async def health_check():
     Returns:
         HealthResponse with system status
     """
-    rag_initialized = rag_pipeline is not None
-    chunks_loaded = len(rag_pipeline.chunks) if rag_pipeline else 0
-    funds_available = len(rag_pipeline.list_available_funds()) if rag_pipeline else 0
+    # Lazy initialize RAG pipeline (for serverless)
+    pipeline = get_rag_pipeline()
+    rag_initialized = pipeline is not None
+    chunks_loaded = len(pipeline.chunks) if pipeline else 0
+    funds_available = len(pipeline.list_available_funds()) if pipeline else 0
     
     status = "healthy" if rag_initialized else "unhealthy"
     
