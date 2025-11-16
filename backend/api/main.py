@@ -60,10 +60,16 @@ def get_rag_pipeline():
     if rag_pipeline is None:
         try:
             logger.info("Initializing RAG pipeline...")
+            # Check for required environment variables
+            gemini_key = os.getenv("GEMINI_API_KEY")
+            if not gemini_key:
+                logger.error("GEMINI_API_KEY environment variable not set")
+                raise ValueError("GEMINI_API_KEY environment variable is required")
+            
             rag_pipeline = RAGPipeline()
-            logger.info("RAG pipeline initialized successfully")
+            logger.info(f"RAG pipeline initialized successfully with {len(rag_pipeline.chunks)} chunks")
         except Exception as e:
-            logger.error(f"Error initializing RAG pipeline: {e}")
+            logger.error(f"Error initializing RAG pipeline: {e}", exc_info=True)
             rag_pipeline = None
     return rag_pipeline
 
@@ -313,7 +319,16 @@ function ChatApp() {
             });
 
             if (!response.ok) {
-                throw new Error('API request failed');
+                // Try to extract error message from response
+                let errorDetail = 'API request failed';
+                try {
+                    const errorData = await response.json();
+                    errorDetail = errorData.detail || errorData.error || errorData.message || errorDetail;
+                } catch (e) {
+                    // If JSON parsing fails, use status text
+                    errorDetail = response.statusText || errorDetail;
+                }
+                throw new Error(`${response.status}: ${errorDetail}`);
             }
 
             const data = await response.json();
@@ -329,13 +344,29 @@ function ChatApp() {
             console.error('Error:', error);
             let errorMessage = 'Sorry, I encountered an error. Please try again later.';
             
+            // Extract error message from error object
+            const errorStr = error.message || error.toString();
+            
             // More specific error messages
-            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                errorMessage = 'Unable to connect to the server. Please make sure the backend API is running on http://localhost:8000';
-            } else if (error.message.includes('404')) {
-                errorMessage = 'API endpoint not found. Please check the backend server configuration.';
-            } else if (error.message.includes('500')) {
-                errorMessage = 'Server error. Please try again later.';
+            if (errorStr.includes('Failed to fetch') || errorStr.includes('NetworkError')) {
+                errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+            } else if (errorStr.includes('503') || errorStr.includes('RAG pipeline not initialized')) {
+                errorMessage = 'The system is still initializing. Please wait a moment and try again.';
+            } else if (errorStr.includes('404')) {
+                errorMessage = 'API endpoint not found. Please check the server configuration.';
+            } else if (errorStr.includes('500') || errorStr.includes('Error processing query')) {
+                // Extract the actual error detail if available
+                const match = errorStr.match(/500: (.+)/);
+                if (match && match[1]) {
+                    errorMessage = 'Server error: ' + match[1];
+                } else {
+                    errorMessage = 'Server error. Please try again later.';
+                }
+            } else if (errorStr.includes('Gemini API key') || errorStr.includes('GEMINI_API_KEY')) {
+                errorMessage = 'Configuration error: API key not set. Please contact support.';
+            } else if (errorStr.length > 0 && errorStr !== 'Error') {
+                // Use the error message if it's informative
+                errorMessage = errorStr.length > 100 ? errorStr.substring(0, 100) + '...' : errorStr;
             }
             
             setMessages(prev => [...prev, { 
@@ -901,11 +932,20 @@ async def query_funds(request: QueryRequest):
             rejection_reason=result.get('rejection_reason')
         )
         
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        logger.error(f"Error processing query: {e}")
+        logger.error(f"Error processing query: {e}", exc_info=True)
+        # Return more specific error details
+        error_detail = str(e)
+        if "Gemini API key" in error_detail or "GEMINI_API_KEY" in error_detail:
+            error_detail = "Gemini API key not configured. Please set GEMINI_API_KEY environment variable."
+        elif "not initialized" in error_detail.lower():
+            error_detail = "RAG pipeline not initialized. Please check server logs."
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing query: {str(e)}"
+            detail=f"Error processing query: {error_detail}"
         )
 
 
