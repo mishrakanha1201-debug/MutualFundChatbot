@@ -66,7 +66,38 @@ def get_rag_pipeline():
                 logger.error("GEMINI_API_KEY environment variable not set")
                 raise ValueError("GEMINI_API_KEY environment variable is required")
             
-            rag_pipeline = RAGPipeline()
+            # Determine data directory path (works in both local and Vercel)
+            project_root = Path(__file__).parent.parent.parent
+            data_dir = project_root / "data" / "scraped"
+            embeddings_dir = project_root / "data" / "embeddings"
+            
+            # Log paths for debugging
+            logger.info(f"Project root: {project_root}")
+            logger.info(f"Data directory: {data_dir} (exists: {data_dir.exists()})")
+            logger.info(f"Embeddings directory: {embeddings_dir} (exists: {embeddings_dir.exists()})")
+            
+            # Check if data directory exists
+            if not data_dir.exists():
+                logger.warning(f"Data directory not found at {data_dir}, trying alternative paths...")
+                # Try alternative paths
+                alt_paths = [
+                    Path.cwd() / "data" / "scraped",
+                    Path("/var/task/data/scraped"),  # Vercel serverless
+                    Path("/tmp/data/scraped"),  # Alternative serverless
+                ]
+                for alt_path in alt_paths:
+                    if alt_path.exists():
+                        data_dir = alt_path
+                        embeddings_dir = alt_path.parent / "embeddings"
+                        logger.info(f"Using alternative data directory: {data_dir}")
+                        break
+                else:
+                    raise FileNotFoundError(f"Data directory not found. Tried: {data_dir} and alternatives")
+            
+            rag_pipeline = RAGPipeline(
+                data_dir=str(data_dir),
+                embeddings_dir=str(embeddings_dir)
+            )
             logger.info(f"RAG pipeline initialized successfully with {len(rag_pipeline.chunks)} chunks")
         except Exception as e:
             logger.error(f"Error initializing RAG pipeline: {e}", exc_info=True)
