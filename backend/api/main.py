@@ -176,7 +176,7 @@ if FRONTEND_APP_JSX:
     logger.info(f"Successfully loaded app.jsx ({len(FRONTEND_APP_JSX)} chars)")
 else:
     logger.error("Failed to load app.jsx - frontend will not work")
-    FRONTEND_APP_JSX = "console.error('app.jsx failed to load');"
+    FRONTEND_APP_JSX = "console.error('app.jsx failed to load'); ReactDOM.render(React.createElement('div', {style: {padding: '20px', color: '#44475B'}}, 'Error: app.jsx failed to load. Check server logs.'), document.getElementById('root'));"
 
 if FRONTEND_STYLES_CSS:
     logger.info(f"Successfully loaded styles.css ({len(FRONTEND_STYLES_CSS)} chars)")
@@ -184,8 +184,22 @@ else:
     logger.error("Failed to load styles.css - frontend styling will not work")
     FRONTEND_STYLES_CSS = "/* styles.css failed to load */"
 
-# Generate HTML with embedded frontend files
-FRONTEND_HTML = generate_frontend_html(FRONTEND_APP_JSX, FRONTEND_STYLES_CSS)
+# Generate HTML with embedded frontend files (lazy generation to ensure files are loaded)
+def get_frontend_html():
+    """Get frontend HTML, reloading files if needed"""
+    global FRONTEND_APP_JSX, FRONTEND_STYLES_CSS
+    
+    # If files weren't loaded, try again
+    if not FRONTEND_APP_JSX or not FRONTEND_STYLES_CSS:
+        logger.warning("Frontend files not loaded at startup, attempting to reload...")
+        if not FRONTEND_APP_JSX:
+            FRONTEND_APP_JSX = load_frontend_file("app.jsx")
+        if not FRONTEND_STYLES_CSS:
+            FRONTEND_STYLES_CSS = load_frontend_file("styles.css")
+    
+    return generate_frontend_html(FRONTEND_APP_JSX, FRONTEND_STYLES_CSS)
+
+FRONTEND_HTML = get_frontend_html()
 
 from fastapi.responses import HTMLResponse, Response
 
@@ -215,10 +229,26 @@ async def serve_styles_css():
 @app.get("/")
 async def serve_frontend():
     """Serve frontend index.html at root"""
+    # Regenerate HTML in case files weren't loaded at startup
+    html = get_frontend_html()
     return HTMLResponse(
-        content=FRONTEND_HTML,
+        content=html,
         headers={"Cache-Control": "no-cache"}
     )
+
+@app.get("/debug/frontend")
+async def debug_frontend():
+    """Debug endpoint to check frontend file loading"""
+    return {
+        "app_jsx_loaded": bool(FRONTEND_APP_JSX),
+        "app_jsx_length": len(FRONTEND_APP_JSX) if FRONTEND_APP_JSX else 0,
+        "styles_css_loaded": bool(FRONTEND_STYLES_CSS),
+        "styles_css_length": len(FRONTEND_STYLES_CSS) if FRONTEND_STYLES_CSS else 0,
+        "public_path_exists": public_path.exists(),
+        "project_root": str(project_root),
+        "public_path": str(public_path),
+        "current_working_dir": str(Path.cwd())
+    }
 
 
 @app.get("/api/", response_model=dict)
