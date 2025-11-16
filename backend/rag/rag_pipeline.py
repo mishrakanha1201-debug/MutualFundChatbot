@@ -354,11 +354,16 @@ Answer:"""
                     "parts": [{"text": prompt}]
                 }]
             }
-            import urllib.request
             import json as json_lib
             
             json_data = json_lib.dumps(data).encode('utf-8')
             api_url = f"{self.gemini_client.api_url}?key={self.gemini_client.api_key}"
+            
+            # Validate API key before making request
+            if not self.gemini_client.api_key:
+                raise ValueError("Gemini API key is not set")
+            
+            logger.debug(f"Making Gemini API request to: {self.gemini_client.api_url.split('?')[0]}")
             
             req = urllib.request.Request(
                 api_url,
@@ -383,8 +388,8 @@ Answer:"""
                 error_json = json_lib.loads(error_body)
                 error_detail = error_json.get('error', {}).get('message', error_detail)
                 logger.error(f"Gemini API HTTP Error {e.code}: {error_detail}")
-            except:
-                logger.error(f"Gemini API HTTP Error {e.code}: {error_detail}")
+            except Exception as parse_error:
+                logger.error(f"Gemini API HTTP Error {e.code}: {error_detail} (could not parse error body: {parse_error})")
             return f"Error generating answer: {error_detail}"
         except Exception as e:
             logger.error(f"Error generating answer: {e}", exc_info=True)
