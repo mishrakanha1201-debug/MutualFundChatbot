@@ -18,11 +18,12 @@ ENV/
 *.swp
 *.swo
 
-# Data
-data/
+# Data (but keep scraped data and embeddings for deployment)
 downloads/
 *.pdf
-*.json
+# Keep data/scraped/ and data/embeddings/ for deployment
+# data/
+# *.json
 
 # Logs
 *.log

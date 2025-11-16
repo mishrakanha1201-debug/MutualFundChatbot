@@ -1,0 +1,246 @@
+{
+  "fund_name": "HDFC Flexi Cap Fund",
+  "sources": [
+    {
+      "source": "amfi_pdf",
+      "url": "https://portal.amfiindia.com/spages/858.pdf",
+      "extracted_fields": [
+        "scheme_name",
+        "scheme_type",
+        "investment_objective",
+        "launch_date",
+        "fund_managers",
+        "benchmark_index",
+        "minimum_investment",
+        "aum",
+        "nav",
+        "expense_ratio",
+        "exit_load",
+        "riskometer_rating",
+        "statement_download_procedures",
+        "taxation_information",
+        "fund_category"
+      ]
+    },
+    {
+      "source": "amfi_ssd",
+      "url": "https://portal.amfiindia.com/spages/SSD_858.pdf",
+      "extracted_fields": [
+        "fund_name",
+        "fund_category",
+        "scheme_type_description",
+        "investment_objective",
+        "launch_date",
+        "fund_managers",
+        "minimum_application_amount",
+        "minimum_additional_application_amount",
+        "minimum_sip_amount",
+        "entry_load",
+        "exit_load",
+        "expense_ratio",
+        "nav",
+        "aum",
+        "riskometer_rating",
+        "benchmark_index",
+        "statement_download_procedures",
+        "lock_in_period",
+        "disclaimer_notes"
+      ]
+    },
+    {
+      "source": "SEBI",
+      "url": "https://www.sebi.gov.in/sebiweb/other/OtherAction.do?doGetFundDetails=yes&mfdId=13666",
+      "extracted_fields": [
+        "fund_name",
+        "fund_house",
+        "fund_category",
+        "document_type",
+        "source_regulator",
+        "pdf_reference"
+      ]
+    },
+    {
+      "source": "hdfc",
+      "url": "https://www.hdfcfund.com/explore/mutual-funds/hdfc-flexi-cap-fund/direct",
+      "extracted_fields": [
+        "fund_house"
+      ]
+    }
+  ],
+  "data": {
+    "scheme_type_description": "An open ended dynamic equity scheme investing across large cap, mid cap, small cap stocks",
+    "fund_category": "Large Cap Equity",
+    "fund_category_alternatives": [
+      "Flexi Cap Fund",
+      "Flexi Cap Fund"
+    ],
+    "minimum_additional_application_amount": {
+      "initial_amount": 1000.0,
+      "currency": "Rs.",
+      "multiples_thereafter": 1.0
+    },
+    "scheme_type": "An open-ended equity scheme predominantly investing in large cap stocks",
+    "aum": {
+      "value": 44933.2,
+      "unit": "Crores",
+      "as_on_date": "31-Oct-23"
+    },
+    "aum_alternatives": [
+      {
+        "value": 27992.83,
+        "unit": "Crores",
+        "currency": "Rs.",
+        "as_on_date": "December 31, 2023"
+      }
+    ],
+    "disclaimer_notes": [
+      "This is an internal communication prepared for the officials of UTI Asset Management Company Ltd.",
+      "This should not be circulated to any third party.",
+      "The data provided is for information purposes only and is not an offer to buy or sell any schemes of UTI Mutual Fund.",
+      "Investors should consult their financial advisor if in doubt about whether the product is suitable for them."
+    ],
+    "expense_ratio": [
+      {
+        "plan_type": "Regular Plan",
+        "value": 1.65,
+        "unit": "%",
+        "as_on_date": "31-Oct-23"
+      },
+      {
+        "plan_type": "Direct Plan",
+        "value": 0.75,
+        "unit": "%",
+        "as_on_date": "31-Oct-23"
+      }
+    ],
+    "expense_ratio_alternatives": [
+      {
+        "as_on_date": "September 30, 2023",
+        "direct_plan": "1.09%",
+        "regular_plan": "1.94%"
+      }
+    ],
+    "investment_objective": "To generate long-term capital appreciation by investing predominantly in equity and equity-related securities of large cap companies.",
+    "investment_objective_alternatives": [
+      "The investment objective of the Scheme is to generate long term capital appreciation by investing predominantly in equity and equity related securities of companies across market capitalization."
+    ],
+    "launch_date": "11-May-06",
+    "launch_date_alternatives": [
+      "18th May 1992"
+    ],
+    "fund_managers": [
+      {
+        "name": "Anish Tawakley",
+        "responsibility": "equity portion"
+      },
+      {
+        "name": "Priyanka Khandelwal",
+        "responsibility": "debt portion"
+      }
+    ],
+    "fund_managers_alternatives": [
+      [
+        {
+          "name": "Ms. Priyanka Khandelwal",
+          "role": null
+        },
+        {
+          "name": "Mr. Ajay B. Tyagi",
+          "role": null
+        },
+        {
+          "name": "Mr. Kamal G. Gada",
+          "role": "for investment in foreign securities"
+        }
+      ]
+    ],
+    "document_type": "Key Information Memorandum (KIM)",
+    "statement_download_procedures": "Available on official website (www.icicipruamc.com) under 'Investor Services' section. Also available through registrars (CAMS/KFintech) portals.",
+    "statement_download_procedures_alternatives": [
+      {
+        "description": "For detailed Statement, NAV & AUM details",
+        "website": "www.utimf.com",
+        "toll_free_number": "1800 266 1230"
+      }
+    ],
+    "source_regulator": "SEBI",
+    "minimum_investment": {
+      "lumpsum": {
+        "initial": 5000,
+        "additional": 1000
+      },
+      "sip": 100
+    },
+    "entry_load": "Not Applicable",
+    "minimum_application_amount": {
+      "initial_amount": 5000.0,
+      "currency": "Rs.",
+      "multiples_thereafter": 1.0
+    },
+    "nav": {
+      "plan_type": "Growth",
+      "value": 93.35,
+      "as_on_date": "31-Oct-23"
+    },
+    "nav_alternatives": [
+      {
+        "as_on_date": "December 29, 2023",
+        "direct_plan": {
+          "value": 367.8967,
+          "currency": "Rs."
+        },
+        "regular_plan": {
+          "value": 339.2942,
+          "currency": "Rs."
+        }
+      }
+    ],
+    "exit_load": "1% if redeemed within 1 year from the date of allotment. Nil if redeemed after 1 year.",
+    "exit_load_alternatives": [
+      [
+        {
+          "condition": "If units are redeemed / switched-out within 1 year from the date of allotment",
+          "load_percentage": 1.0,
+          "load_basis": "of the NAV"
+        },
+        {
+          "condition": "If units are redeemed / switched-out after 1 year from the date of allotment",
+          "load_percentage": 0.0,
+          "load_basis": "Nil"
+        }
+      ]
+    ],
+    "taxation_information": {
+      "overview": "Equity oriented funds are subject to capital gains tax as per IT Act.",
+      "long_term_capital_gains_tax": "10% without indexation for gains above Rs. 1 lakh in a financial year.",
+      "short_term_capital_gains_tax": "15%"
+    },
+    "minimum_sip_amount": {
+      "initial_amount": 500.0,
+      "currency": "Rs.",
+      "multiples_thereafter": 1.0,
+      "minimum_instalments": 6
+    },
+    "benchmark_index": "NIFTY 100 TRI",
+    "benchmark_index_alternatives": [
+      "NIFTY 500 TRI (Total Return Index)"
+    ],
+    "lock_in_period": "Not applicable (Not an ELSS fund)",
+    "pdf_reference": "1732855871754.pdf",
+    "fund_name": "UTI Flexi Cap Fund",
+    "fund_name_alternatives": [
+      "HDFC Flexi Cap Fund"
+    ],
+    "scheme_name": "ICICI Prudential Bluechip Fund",
+    "fund_house": "HDFC Mutual Fund",
+    "fund_house_alternatives": [
+      "HDFC"
+    ],
+    "riskometer_rating": "Very High",
+    "riskometer_rating_alternatives": [
+      "Very High Risk"
+    ]
+  },
+  "extraction_timestamp": "2025-11-15T20:36:00.721315",
+  "total_sources": 4
+}

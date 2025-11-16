@@ -1,0 +1,138 @@
+{
+  "fund_name": "HDFC ELSS Tax Saver Fund",
+  "sources": [
+    {
+      "source": "amfi_pdf",
+      "url": "https://portal.amfiindia.com/spages/861.pdf",
+      "extracted_fields": []
+    },
+    {
+      "source": "amfi_ssd",
+      "url": "https://portal.amfiindia.com/spages/SSD_861.pdf",
+      "extracted_fields": [
+        "fund_house",
+        "scheme_name",
+        "fund_category",
+        "scheme_type",
+        "investment_objective",
+        "benchmark_index",
+        "riskometer_rating",
+        "fund_manager",
+        "launch_date",
+        "nav",
+        "aum",
+        "expense_ratio",
+        "exit_load",
+        "minimum_sip_amount",
+        "document_type"
+      ]
+    },
+    {
+      "source": "SEBI",
+      "url": "https://www.sebi.gov.in/sebiweb/other/OtherAction.do?doGetFundDetails=yes&mfdId=11577",
+      "extracted_fields": [
+        "fund_name",
+        "fund_category",
+        "amc",
+        "document_type",
+        "source_information",
+        "lock_in_period",
+        "investment_objective"
+      ]
+    },
+    {
+      "source": "hdfc",
+      "url": "https://www.hdfcfund.com/explore/mutual-funds/hdfc-elss-tax-saver/direct",
+      "extracted_fields": [
+        "fund_name",
+        "returns_since_inception",
+        "minimum_sip_amount",
+        "entry_load",
+        "expense_ratio",
+        "lock_in_period",
+        "nav",
+        "aum"
+      ]
+    }
+  ],
+  "data": {
+    "source_information": {
+      "source_agency": "SEBI",
+      "document_path": "Home » Filings » Mutual Funds » Key Information Memorandum (KIM) » HDFC Mutual Fund » HDFC ELSS Tax saver",
+      "pdf_file_reference": "1732854184210.pdf",
+      "notes": "Limited text extraction - some content may be missing from the original PDF."
+    },
+    "fund_category": "Index Fund, Large Cap",
+    "fund_category_alternatives": [
+      "ELSS (Equity Linked Savings Scheme)"
+    ],
+    "scheme_type": "Open-ended scheme tracking the Nifty 50 Index",
+    "aum": {
+      "as_on_date": "May 31, 2024",
+      "value": "₹5,123.45 Crores"
+    },
+    "aum_alternatives": [
+      "NA"
+    ],
+    "amc": "HDFC Mutual Fund",
+    "expense_ratio": {
+      "as_on_date": "May 31, 2024",
+      "direct_plan": "0.20%",
+      "regular_plan": "0.50%"
+    },
+    "expense_ratio_alternatives": [
+      "NA"
+    ],
+    "investment_objective": "The investment objective of the scheme is to provide returns that, before expenses, closely correspond to the total returns of the Nifty 50 Index, subject to tracking error.",
+    "investment_objective_alternatives": [
+      {
+        "primary_objective": "Tax Saving and Long-Term Capital Appreciation",
+        "notes": "Inferred from the fund name 'ELSS Tax saver', indicating its purpose as an Equity Linked Savings Scheme for tax benefits."
+      }
+    ],
+    "launch_date": "12th February 2010",
+    "returns_since_inception": "NA",
+    "document_type": [
+      "Scheme Information Document (SID)",
+      "Key Information Memorandum (KIM)"
+    ],
+    "document_type_alternatives": [
+      "Key Information Memorandum (KIM)"
+    ],
+    "entry_load": "NA",
+    "nav": {
+      "as_on_date": "May 31, 2024",
+      "growth_option": "₹145.2384",
+      "idcw_option": "₹45.8902"
+    },
+    "nav_alternatives": [
+      "NA"
+    ],
+    "exit_load": {
+      "within_7_days": "0.25% of the NAV",
+      "after_7_days": "Nil"
+    },
+    "fund_manager": "Mr. Sharwan Kumar Goyal (For domestic equities portion of the scheme)",
+    "minimum_sip_amount": "₹500 and in multiples of ₹1 thereafter",
+    "minimum_sip_amount_alternatives": [
+      "₹ undefined"
+    ],
+    "benchmark_index": "Nifty 50 Total Return Index (TRI)",
+    "lock_in_period": {
+      "duration": "3 years",
+      "notes": "Inferred from the fund category 'ELSS', which statutorily requires a 3-year lock-in period for tax benefits."
+    },
+    "lock_in_period_alternatives": [
+      "NA"
+    ],
+    "fund_house": "UTI Mutual Fund",
+    "scheme_name": "UTI Nifty 50 Index Fund",
+    "fund_name": "HDFC ELSS Tax saver",
+    "fund_name_alternatives": [
+      "HDFC"
+    ],
+    "riskometer_rating": "Very High"
+  },
+  "extraction_timestamp": "2025-11-15T20:36:32.255861",
+  "total_sources": 4
+}

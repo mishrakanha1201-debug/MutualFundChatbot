@@ -1,7 +1,8 @@
 const { useState, useEffect, useRef } = React;
 
 // API Configuration
-const API_BASE_URL = 'http://localhost:8000';
+// Use relative URL for same-domain deployment (Vercel), fallback to localhost for development
+const API_BASE_URL = window.location.origin || 'http://localhost:8000';
 
 // Welcome State Component
 function WelcomeState({ onQuestionClick }) {
