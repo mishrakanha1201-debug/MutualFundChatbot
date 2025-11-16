@@ -71,9 +71,9 @@ async def startup_event():
     get_rag_pipeline()
 
 
-@app.get("/", response_model=dict)
-async def root():
-    """Root endpoint"""
+@app.get("/api/", response_model=dict)
+async def api_root():
+    """API root endpoint"""
     return {
         "message": "Mutual Fund FAQ Bot API",
         "version": "1.0.0",
