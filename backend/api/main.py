@@ -195,7 +195,7 @@ async def health_check():
     chunks_loaded = len(pipeline.chunks) if pipeline else 0
     funds_available = len(pipeline.list_available_funds()) if pipeline else 0
     
-    status = "healthy" if rag_initialized else "unhealthy"
+    status = "healthy" if pipeline else "unhealthy"
     
     return HealthResponse(
         status=status,
