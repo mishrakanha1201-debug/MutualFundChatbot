@@ -1,20 +1,8 @@
-# Web Scraping
-beautifulsoup4>=4.12.0
-requests>=2.31.0
-lxml>=4.9.0
+# Minimal dependencies for Vercel deployment
+# Only include what's needed for the FastAPI backend
 
-# PDF Processing
-pdfplumber>=0.10.0
-pypdf>=3.0.0
-
-# LLM Integration (Gemini)
-google-generativeai>=0.3.0
-
-# API Framework
+# API Framework (required)
 fastapi>=0.104.0
-uvicorn>=0.24.0
 
-# Utilities
-python-dotenv>=1.0.0
-loguru>=0.7.0
-
+# Note: We use standard library (urllib, json) for Gemini API calls
+# No need for google-generativeai, beautifulsoup4, pdfplumber, etc. in production
