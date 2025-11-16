@@ -2,6 +2,8 @@
 RAG Pipeline - Main orchestrator for Retrieval-Augmented Generation
 """
 import json
+import urllib.request
+import urllib.error
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import logging
@@ -373,8 +375,19 @@ Answer:"""
             else:
                 return "I couldn't generate an answer. Please try rephrasing your question."
                 
+        except urllib.error.HTTPError as e:
+            # Capture the actual error response from Gemini API
+            error_detail = str(e)
+            try:
+                error_body = e.read().decode('utf-8')
+                error_json = json_lib.loads(error_body)
+                error_detail = error_json.get('error', {}).get('message', error_detail)
+                logger.error(f"Gemini API HTTP Error {e.code}: {error_detail}")
+            except:
+                logger.error(f"Gemini API HTTP Error {e.code}: {error_detail}")
+            return f"Error generating answer: {error_detail}"
         except Exception as e:
-            logger.error(f"Error generating answer: {e}")
+            logger.error(f"Error generating answer: {e}", exc_info=True)
             return f"Error generating answer: {str(e)}"
     
     def _extract_fund_name_from_query(self, query: str) -> Optional[str]:
