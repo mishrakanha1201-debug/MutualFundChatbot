@@ -78,19 +78,27 @@ project_root = Path(__file__).parent.parent.parent
 public_path = project_root / "public"
 
 def load_frontend_file(filename: str) -> str:
-    """Load frontend file from public directory"""
-    file_path = public_path / filename
-    if file_path.exists():
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                return f.read()
-        except Exception as e:
-            logger.error(f"Error reading {filename}: {e}")
-            return ""
-    else:
-        logger.warning(f"File not found: {file_path}")
-        return ""
+    """Load frontend file from public directory - tries multiple paths for Vercel"""
+    # Try multiple possible paths
+    possible_paths = [
+        public_path / filename,  # Standard path
+        project_root / "public" / filename,  # Explicit project root
+        Path.cwd() / "public" / filename,  # Current working directory
+        Path(__file__).parent.parent.parent / "public" / filename,  # From this file
+    ]
     
+    for file_path in possible_paths:
+        if file_path.exists():
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    logger.info(f"Successfully loaded {filename} from {file_path}")
+                    return content
+            except Exception as e:
+                logger.warning(f"Error reading {filename} from {file_path}: {e}")
+                continue
+    
+    logger.error(f"Could not load {filename} from any path. Tried: {[str(p) for p in possible_paths]}")
     return ""
 
 # Load frontend files at module load time
@@ -133,7 +141,25 @@ FRONTEND_HTML = """<!DOCTYPE html>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script type="text/babel" src="app.jsx"></script>
+    <script type="text/babel" id="app-jsx-script"></script>
+    <script>
+        // Load app.jsx inline to avoid external file loading issues
+        fetch('/app.jsx')
+            .then(response => response.text())
+            .then(code => {
+                const script = document.getElementById('app-jsx-script');
+                script.textContent = code;
+                // Trigger Babel transformation
+                if (window.Babel) {
+                    const transformed = Babel.transform(code, { presets: ['react'] }).code;
+                    eval(transformed);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading app.jsx:', error);
+                document.getElementById('root').innerHTML = '<p style="padding: 20px; color: #44475B;">Error loading application. Please refresh the page.</p>';
+            });
+    </script>
 </body>
 </html>"""
 
