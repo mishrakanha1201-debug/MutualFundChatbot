@@ -72,67 +72,100 @@ async def startup_event():
     """Initialize RAG pipeline on startup (for traditional deployments)"""
     get_rag_pipeline()
 
-# Mount static files for frontend (only if public directory exists)
-# For Vercel deployment, serve static files through FastAPI
-# IMPORTANT: Define static file routes BEFORE the root route
-# Try multiple possible paths for public directory (works in both local and Vercel)
-# Get project root (3 levels up from backend/api/main.py)
+# Load frontend files for Vercel serverless deployment
+# Try to load from public directory (works in local dev), fall back to reading at runtime
 project_root = Path(__file__).parent.parent.parent
+public_path = project_root / "public"
 
-possible_paths = [
-    project_root / "public",  # From project root
-    Path(__file__).parent.parent.parent / "public",  # From backend/api/main.py (same as above)
-    Path.cwd() / "public",  # Current working directory
-    Path("/var/task/public"),  # Vercel serverless environment
-    Path("/tmp/public"),  # Alternative Vercel path
-]
-
-public_path = None
-for path in possible_paths:
-    abs_path = path.resolve() if path.exists() else path
-    if path.exists() and (path / "index.html").exists():
-        public_path = path
-        logger.info(f"Found public directory at: {public_path} (absolute: {abs_path})")
-        break
-
-if not public_path:
-    logger.warning(f"Public directory not found. Checked paths: {[str(p) for p in possible_paths]}")
-
-if public_path:
-    # Serve individual static files (define these first)
-    @app.get("/app.jsx")
-    async def serve_app_jsx():
-        """Serve app.jsx"""
-        jsx_path = public_path / "app.jsx"
-        if jsx_path.exists():
-            return FileResponse(str(jsx_path), media_type="application/javascript")
-        raise HTTPException(status_code=404, detail="app.jsx not found")
+def load_frontend_file(filename: str) -> str:
+    """Load frontend file from public directory"""
+    file_path = public_path / filename
+    if file_path.exists():
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            logger.error(f"Error reading {filename}: {e}")
+            return ""
+    else:
+        logger.warning(f"File not found: {file_path}")
+        return ""
     
-    @app.get("/styles.css")
-    async def serve_styles_css():
-        """Serve styles.css"""
-        css_path = public_path / "styles.css"
-        if css_path.exists():
-            return FileResponse(str(css_path), media_type="text/css")
-        raise HTTPException(status_code=404, detail="styles.css not found")
-    
-    # Serve frontend index.html at root (define last, as catch-all)
-    @app.get("/")
-    async def serve_frontend():
-        """Serve frontend index.html at root"""
-        index_path = public_path / "index.html"
-        if index_path.exists():
-            return FileResponse(str(index_path), media_type="text/html")
-        else:
-            logger.error(f"index.html not found at: {index_path}")
-            return {"message": "Frontend not found. Please ensure public/index.html exists."}
-else:
-    logger.warning("Public directory not found. Frontend will not be served.")
-    
-    @app.get("/")
-    async def serve_frontend_fallback():
-        """Fallback if public directory not found"""
-        return {"message": "Frontend files not found. Please ensure public/ directory exists with index.html, app.jsx, and styles.css"}
+    return ""
+
+# Load frontend files at module load time
+FRONTEND_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mutual Fund Broww - Groww</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #FFFFFF;
+            color: #44475B;
+            line-height: 1.5;
+        }
+        
+        #root {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <link rel="stylesheet" href="styles.css">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel" src="app.jsx"></script>
+</body>
+</html>"""
+
+# Load JSX and CSS files
+FRONTEND_APP_JSX = load_frontend_file("app.jsx")
+FRONTEND_STYLES_CSS = load_frontend_file("styles.css")
+
+if not FRONTEND_APP_JSX:
+    logger.error("Failed to load app.jsx - frontend will not work")
+    FRONTEND_APP_JSX = "console.error('app.jsx failed to load');"
+
+if not FRONTEND_STYLES_CSS:
+    logger.error("Failed to load styles.css - frontend styling will not work")
+    FRONTEND_STYLES_CSS = "/* styles.css failed to load */"
+
+from fastapi.responses import HTMLResponse, Response
+
+# Serve frontend files
+@app.get("/app.jsx")
+async def serve_app_jsx():
+    """Serve app.jsx"""
+    return Response(content=FRONTEND_APP_JSX, media_type="application/javascript")
+
+@app.get("/styles.css")
+async def serve_styles_css():
+    """Serve styles.css"""
+    return Response(content=FRONTEND_STYLES_CSS, media_type="text/css")
+
+@app.get("/")
+async def serve_frontend():
+    """Serve frontend index.html at root"""
+    return HTMLResponse(content=FRONTEND_HTML)
 
 
 @app.get("/api/", response_model=dict)
