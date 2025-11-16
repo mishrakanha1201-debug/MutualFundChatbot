@@ -74,12 +74,10 @@ async def startup_event():
 
 # Mount static files for frontend (only if public directory exists)
 # For Vercel deployment, serve static files through FastAPI
+# IMPORTANT: Define static file routes BEFORE the root route
 public_path = Path(__file__).parent.parent.parent / "public"
 if public_path.exists():
-    # Serve static files (JS, CSS, etc.)
-    app.mount("/static", StaticFiles(directory=str(public_path)), name="static")
-    
-    # Serve individual static files
+    # Serve individual static files (define these first)
     @app.get("/app.jsx")
     async def serve_app_jsx():
         """Serve app.jsx"""
@@ -95,17 +93,16 @@ if public_path.exists():
         if css_path.exists():
             return FileResponse(str(css_path), media_type="text/css")
         raise HTTPException(status_code=404, detail="styles.css not found")
-
-
-@app.get("/")
-async def serve_frontend():
-    """Serve frontend index.html at root"""
-    public_path = Path(__file__).parent.parent.parent / "public"
-    index_path = public_path / "index.html"
-    if index_path.exists():
-        return FileResponse(str(index_path), media_type="text/html")
-    else:
-        return {"message": "Frontend not found. Please ensure public/index.html exists."}
+    
+    # Serve frontend index.html at root (define last, as catch-all)
+    @app.get("/")
+    async def serve_frontend():
+        """Serve frontend index.html at root"""
+        index_path = public_path / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path), media_type="text/html")
+        else:
+            return {"message": "Frontend not found. Please ensure public/index.html exists."}
 
 
 @app.get("/api/", response_model=dict)
