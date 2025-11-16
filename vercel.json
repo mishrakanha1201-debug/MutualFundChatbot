@@ -12,22 +12,16 @@
       "dest": "api/index.py"
     },
     {
-      "src": "/(.*)",
+      "src": "/(.*\\.(js|jsx|css|html|json|png|jpg|svg|ico))",
       "dest": "/frontend/$1"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/frontend/index.html"
     },
     {
-      "source": "/app.jsx",
-      "destination": "/frontend/app.jsx"
+      "src": "/",
+      "dest": "/frontend/index.html"
     },
     {
-      "source": "/styles.css",
-      "destination": "/frontend/styles.css"
+      "src": "/(.*)",
+      "dest": "/frontend/index.html"
     }
   ]
 }
