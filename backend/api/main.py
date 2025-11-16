@@ -51,17 +51,24 @@ app.add_middleware(
 rag_pipeline: Optional[RAGPipeline] = None
 
 
+# Initialize RAG pipeline (lazy initialization for serverless)
+def get_rag_pipeline():
+    """Get or initialize RAG pipeline (lazy loading for serverless)"""
+    global rag_pipeline
+    if rag_pipeline is None:
+        try:
+            logger.info("Initializing RAG pipeline...")
+            rag_pipeline = RAGPipeline()
+            logger.info("RAG pipeline initialized successfully")
+        except Exception as e:
+            logger.error(f"Error initializing RAG pipeline: {e}")
+            rag_pipeline = None
+    return rag_pipeline
+
 @app.on_event("startup")
 async def startup_event():
-    """Initialize RAG pipeline on startup"""
-    global rag_pipeline
-    try:
-        logger.info("Initializing RAG pipeline...")
-        rag_pipeline = RAGPipeline()
-        logger.info("RAG pipeline initialized successfully")
-    except Exception as e:
-        logger.error(f"Error initializing RAG pipeline: {e}")
-        rag_pipeline = None
+    """Initialize RAG pipeline on startup (for traditional deployments)"""
+    get_rag_pipeline()
 
 
 @app.get("/", response_model=dict)
@@ -203,14 +210,16 @@ async def query_simple(question: str = Query(..., description="Question about mu
     Returns:
         Simple JSON response with answer
     """
-    if not rag_pipeline:
+    # Lazy initialize RAG pipeline (for serverless)
+    pipeline = get_rag_pipeline()
+    if not pipeline:
         raise HTTPException(
             status_code=503,
             detail="RAG pipeline not initialized"
         )
     
     try:
-        result = rag_pipeline.query(question=question)
+        result = pipeline.query(question=question)
         return {
             "question": question,
             "answer": result['answer'],
