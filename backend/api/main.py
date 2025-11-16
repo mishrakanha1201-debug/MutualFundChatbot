@@ -101,8 +101,17 @@ def load_frontend_file(filename: str) -> str:
     logger.error(f"Could not load {filename} from any path. Tried: {[str(p) for p in possible_paths]}")
     return ""
 
-# Load frontend files at module load time
-FRONTEND_HTML = """<!DOCTYPE html>
+# Generate HTML with embedded frontend files
+def generate_frontend_html(app_jsx_content: str, styles_css_content: str) -> str:
+    """Generate HTML with embedded JSX and CSS"""
+    # Escape for JavaScript template literal
+    def escape_js(s):
+        return s.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${').replace('</script>', '<\\/script>')
+    
+    app_jsx_escaped = escape_js(app_jsx_content)
+    styles_css_escaped = escape_js(styles_css_content)
+    
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -112,67 +121,37 @@ FRONTEND_HTML = """<!DOCTYPE html>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        * {
+        * {{
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
+        }}
         
-        body {
+        body {{
             font-family: 'Inter', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background-color: #FFFFFF;
             color: #44475B;
             line-height: 1.5;
-        }
+        }}
         
-        #root {
+        #root {{
             width: 100%;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
-        }
+        }}
     </style>
+    <style id="app-styles">{styles_css_escaped}</style>
 </head>
 <body>
     <div id="root"></div>
-    <link rel="stylesheet" href="styles.css">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script>
-        // Load app.jsx and execute it with Babel transformation
-        fetch('/app.jsx')
-            .then(response => {
-                if (!response.ok) throw new Error('Failed to load app.jsx: ' + response.status);
-                return response.text();
-            })
-            .then(code => {
-                // Transform JSX to JavaScript using Babel
-                if (window.Babel) {
-                    try {
-                        const transformed = Babel.transform(code, { 
-                            presets: ['react'],
-                            plugins: ['transform-react-jsx']
-                        }).code;
-                        // Execute the transformed code
-                        eval(transformed);
-                    } catch (transformError) {
-                        console.error('Babel transformation error:', transformError);
-                        throw transformError;
-                    }
-                } else {
-                    throw new Error('Babel not loaded');
-                }
-            })
-            .catch(error => {
-                console.error('Error loading app.jsx:', error);
-                const root = document.getElementById('root');
-                if (root) {
-                    root.innerHTML = '<div style="padding: 20px; color: #44475B; text-align: center;"><p>Error loading application.</p><p style="font-size: 12px; color: #7C7E8C;">' + error.message + '</p><p style="font-size: 12px; color: #7C7E8C; margin-top: 10px;">Please check the browser console for details.</p></div>';
-                }
-            });
+    <script type="text/babel">
+        {app_jsx_escaped}
     </script>
 </body>
 </html>"""
@@ -193,6 +172,9 @@ if FRONTEND_STYLES_CSS:
 else:
     logger.error("Failed to load styles.css - frontend styling will not work")
     FRONTEND_STYLES_CSS = "/* styles.css failed to load */"
+
+# Generate HTML with embedded frontend files
+FRONTEND_HTML = generate_frontend_html(FRONTEND_APP_JSX, FRONTEND_STYLES_CSS)
 
 from fastapi.responses import HTMLResponse, Response
 
