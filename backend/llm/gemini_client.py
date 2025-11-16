@@ -39,9 +39,9 @@ class GeminiClient:
         if not self.api_key:
             raise ValueError("Gemini API key is required. Set GEMINI_API_KEY in .env file")
         
-        # Use gemini-pro (stable model) - gemini-1.5-flash may not be available in v1beta
+        # Use gemini-pro (stable model available in v1beta API)
         self.api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
-        logger.info("Gemini client initialized")
+        logger.info(f"Gemini client initialized with model: gemini-pro")
     
     def extract_relevant_data(self, text_content: str, source_type: str) -> Dict[str, Any]:
         """
