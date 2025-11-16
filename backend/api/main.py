@@ -125,8 +125,9 @@ def generate_frontend_html(app_jsx_content: str, styles_css_content: str) -> str
     app_jsx_escaped = escape_for_html(app_jsx_content)
     styles_css_escaped = escape_for_html(styles_css_content)
     
-    # Use string formatting with proper escaping
-    html_template = """<!DOCTYPE html>
+    # Use string concatenation instead of .format() to avoid conflicts with CSS/JSX curly braces
+    html_parts = [
+        """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -158,7 +159,9 @@ def generate_frontend_html(app_jsx_content: str, styles_css_content: str) -> str
             padding: 20px;
         }
     </style>
-    <style id="app-styles">{styles}</style>
+    <style id="app-styles">""",
+        styles_css_escaped,
+        """</style>
 </head>
 <body>
     <div id="root"></div>
@@ -166,12 +169,15 @@ def generate_frontend_html(app_jsx_content: str, styles_css_content: str) -> str
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="text/babel">
-{jsx}
+""",
+        app_jsx_escaped,
+        """
     </script>
 </body>
 </html>"""
+    ]
     
-    return html_template.format(styles=styles_css_escaped, jsx=app_jsx_escaped)
+    return ''.join(html_parts)
 
 # Load JSX and CSS files at module startup with error handling
 FRONTEND_APP_JSX = ""
