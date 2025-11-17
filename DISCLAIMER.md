@@ -1,5 +1,11 @@
 # Disclaimer
 
+## UI Screenshot
+
+The following screenshot shows the disclaimer as it appears in the chatbot user interface:
+
+![Disclaimer UI Screenshot](DISCLAIMER2.png)
+
 ## UI Disclaimer Text
 
 The following disclaimer is displayed in the chatbot user interface:
