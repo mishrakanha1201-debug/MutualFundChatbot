@@ -348,31 +348,14 @@ Instructions:
 Answer:"""
 
         try:
-            # Use Gemini to generate answer
-            data = {
-                "contents": [{
-                    "parts": [{"text": prompt}]
-                }]
-            }
-            import json as json_lib
-            
-            json_data = json_lib.dumps(data).encode('utf-8')
-            api_url = f"{self.gemini_client.api_url}?key={self.gemini_client.api_key}"
-            
             # Validate API key before making request
             if not self.gemini_client.api_key:
                 raise ValueError("Gemini API key is not set")
             
             logger.debug(f"Making Gemini API request to: {self.gemini_client.api_url.split('?')[0]}")
             
-            req = urllib.request.Request(
-                api_url,
-                data=json_data,
-                headers={'Content-Type': 'application/json'}
-            )
-            
-            with urllib.request.urlopen(req) as response:
-                result = json_lib.loads(response.read().decode('utf-8'))
+            # Use the retry logic from GeminiClient
+            result = self.gemini_client._make_api_request_with_retry(prompt)
             
             if 'candidates' in result and len(result['candidates']) > 0:
                 answer = result['candidates'][0]['content']['parts'][0]['text'].strip()
@@ -381,19 +364,33 @@ Answer:"""
                 return "I couldn't generate an answer. Please try rephrasing your question."
                 
         except urllib.error.HTTPError as e:
-            # Capture the actual error response from Gemini API
+            # Handle rate limiting and other HTTP errors
             error_detail = str(e)
             try:
                 error_body = e.read().decode('utf-8')
+                import json as json_lib
                 error_json = json_lib.loads(error_body)
                 error_detail = error_json.get('error', {}).get('message', error_detail)
+            except Exception:
+                pass
+            
+            if e.code == 429:
+                # Rate limit error - provide user-friendly message
+                logger.error(f"Gemini API Rate Limit Error (429): {error_detail}")
+                return "The API is currently experiencing high traffic. Please wait a moment and try again. If this persists, you may have reached your API quota limit."
+            else:
                 logger.error(f"Gemini API HTTP Error {e.code}: {error_detail}")
-            except Exception as parse_error:
-                logger.error(f"Gemini API HTTP Error {e.code}: {error_detail} (could not parse error body: {parse_error})")
-            return f"Error generating answer: {error_detail}"
+                # Don't expose technical details to users
+                if "Resource exhausted" in error_detail or "429" in error_detail:
+                    return "The service is temporarily unavailable due to high demand. Please try again in a few moments."
+                return "I encountered an error while generating the answer. Please try again later."
         except Exception as e:
+            error_msg = str(e)
             logger.error(f"Error generating answer: {e}", exc_info=True)
-            return f"Error generating answer: {str(e)}"
+            # Check if it's a rate limit error in the message
+            if "429" in error_msg or "rate limit" in error_msg.lower() or "Resource exhausted" in error_msg:
+                return "The API is currently experiencing high traffic. Please wait a moment and try again."
+            return "I encountered an error while generating the answer. Please try again later."
     
     def _extract_fund_name_from_query(self, query: str) -> Optional[str]:
         """
