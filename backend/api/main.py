@@ -51,20 +51,23 @@ app.add_middleware(
 
 # Global RAG pipeline instance
 rag_pipeline: Optional[RAGPipeline] = None
+rag_init_error: Optional[str] = None  # Store initialization error for better error messages
 
 
 # Initialize RAG pipeline (lazy initialization for serverless)
 def get_rag_pipeline():
     """Get or initialize RAG pipeline (lazy loading for serverless)"""
-    global rag_pipeline
+    global rag_pipeline, rag_init_error
     if rag_pipeline is None:
         try:
             logger.info("Initializing RAG pipeline...")
             # Check for required environment variables
             gemini_key = os.getenv("GEMINI_API_KEY")
             if not gemini_key:
-                logger.error("GEMINI_API_KEY environment variable not set")
-                raise ValueError("GEMINI_API_KEY environment variable is required")
+                error_msg = "GEMINI_API_KEY environment variable not set. Please configure it in Vercel project settings under Environment Variables."
+                logger.error(error_msg)
+                rag_init_error = error_msg
+                raise ValueError(error_msg)
             
             # Determine data directory path (works in both local and Vercel)
             project_root = Path(__file__).parent.parent.parent
@@ -92,15 +95,27 @@ def get_rag_pipeline():
                         logger.info(f"Using alternative data directory: {data_dir}")
                         break
                 else:
-                    raise FileNotFoundError(f"Data directory not found. Tried: {data_dir} and alternatives")
+                    error_msg = f"Data directory not found. Tried: {data_dir} and alternatives. Please ensure data files are included in deployment."
+                    logger.error(error_msg)
+                    rag_init_error = error_msg
+                    raise FileNotFoundError(error_msg)
             
             rag_pipeline = RAGPipeline(
                 data_dir=str(data_dir),
                 embeddings_dir=str(embeddings_dir)
             )
             logger.info(f"RAG pipeline initialized successfully with {len(rag_pipeline.chunks)} chunks")
+            rag_init_error = None  # Clear error on success
         except Exception as e:
+            error_msg = str(e)
             logger.error(f"Error initializing RAG pipeline: {e}", exc_info=True)
+            # Store more specific error message
+            if "GEMINI_API_KEY" in error_msg or "Gemini API key" in error_msg:
+                rag_init_error = "Gemini API key is missing or invalid. Please set GEMINI_API_KEY in Vercel environment variables."
+            elif "Data directory" in error_msg or "not found" in error_msg:
+                rag_init_error = "Data files not found. Please ensure scraped data is included in the deployment."
+            else:
+                rag_init_error = f"Failed to initialize RAG pipeline: {error_msg}"
             rag_pipeline = None
     return rag_pipeline
 
@@ -927,9 +942,11 @@ async def query_funds(request: QueryRequest):
     # Lazy initialize RAG pipeline (for serverless)
     pipeline = get_rag_pipeline()
     if not pipeline:
+        # Return specific error message if available
+        error_detail = rag_init_error or "RAG pipeline not initialized. Please check server logs."
         raise HTTPException(
             status_code=503,
-            detail="RAG pipeline not initialized. Please check server logs."
+            detail=error_detail
         )
     
     try:
@@ -991,9 +1008,10 @@ async def list_schemes():
     # Lazy initialize RAG pipeline (for serverless)
     pipeline = get_rag_pipeline()
     if not pipeline:
+        error_detail = rag_init_error or "RAG pipeline not initialized"
         raise HTTPException(
             status_code=503,
-            detail="RAG pipeline not initialized"
+            detail=error_detail
         )
     
     try:
@@ -1055,9 +1073,10 @@ async def query_simple(question: str = Query(..., description="Question about mu
     # Lazy initialize RAG pipeline (for serverless)
     pipeline = get_rag_pipeline()
     if not pipeline:
+        error_detail = rag_init_error or "RAG pipeline not initialized"
         raise HTTPException(
             status_code=503,
-            detail="RAG pipeline not initialized"
+            detail=error_detail
         )
     
     try:
