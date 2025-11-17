@@ -42,7 +42,8 @@ class GeminiClient:
             raise ValueError("Gemini API key is required. Set GEMINI_API_KEY in .env file")
         
         # Use gemini-2.0-flash-lite (recommended by Google, cost-efficient and low latency)
-        # This is the current recommended model (gemini-1.5-flash was deprecated)
+        # This model is used to avoid rate limiting issues with newer models like gemini-2.5
+        # gemini-1.5-flash was deprecated, gemini-2.0-flash-lite has better rate limits
         self.api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
         self.max_retries = 3
         self.retry_delay_base = 2  # Base delay in seconds for exponential backoff
