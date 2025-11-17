@@ -54,20 +54,29 @@ function MessageBubble({ message, isUser, source, timestamp }) {
         answerText = answerText.split('For more details, visit:')[0].trim();
     }
 
+    // Check if this is an error message - don't show source link for errors
+    const isErrorMessage = answerText.toLowerCase().includes('error') || 
+                          answerText.toLowerCase().includes('experiencing high traffic') ||
+                          answerText.toLowerCase().includes('temporarily unavailable') ||
+                          answerText.toLowerCase().includes('rate limit') ||
+                          answerText.toLowerCase().includes('quota limit') ||
+                          answerText.toLowerCase().includes('please wait a moment') ||
+                          answerText.toLowerCase().includes('encountered an error');
+
     return (
         <div className="message-bubble assistant-bubble">
             <div className="answer-text">{answerText}</div>
-            {source && (
+            {source && !isErrorMessage && (
                 <a 
                     href={source} 
-                    target="_blank" 
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="source-link"
                 >
                     View Source →
                 </a>
             )}
-            {timestamp && (
+            {timestamp && !isErrorMessage && (
                 <div className="timestamp">
                     Last updated from sources: {timestamp}
                 </div>

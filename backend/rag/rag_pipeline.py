@@ -196,7 +196,24 @@ class RAGPipeline:
         # Generate answer using Gemini with constraints
         answer = self._generate_answer(question, context_text)
         
-        # Format response with constraints
+        # Check if answer is an error message (rate limit, API errors, etc.)
+        is_error_message = any(keyword in answer.lower() for keyword in [
+            'error', 'encountered an error', 'experiencing high traffic', 
+            'temporarily unavailable', 'rate limit', 'quota limit', 
+            'api is currently', 'please wait a moment'
+        ])
+        
+        if is_error_message:
+            # For error messages, don't include citation_link or timestamp
+            return {
+                'answer': answer,
+                'sources': [],
+                'confidence': 0.0,
+                'citation_link': '',  # No citation for errors
+                'timestamp': None  # No timestamp for errors
+            }
+        
+        # Format response with constraints for successful answers
         formatted = self.response_formatter.format_answer(
             answer,
             [
