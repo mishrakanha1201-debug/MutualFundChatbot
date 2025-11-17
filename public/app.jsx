@@ -18,7 +18,7 @@ function WelcomeState({ onQuestionClick }) {
                 Hi! I can help you find quick facts about mutual fund schemes from official sources.
             </p>
             <p className="welcome-disclaimer">
-                Post your questions in the chat below!
+                Facts-only. No investment advice.
             </p>
             <div className="example-questions">
                 {exampleQuestions.map((question, index) => (
